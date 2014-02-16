@@ -17,17 +17,16 @@ function onMessage( message, headers, deliveryInfo, job ){
     job.acknowledge();
   }
 
-  request({
+  var s = request({
     url: message.url,
     encoding: null
-  }, function( err, _, body ){
-    if( err ){
-      return cb( err );
-    }
-    db.save( "attachments", message.id, body, {
-      contentType: "application/octet-stream"
-    }, cb );
   });
+  s.on( "error", function( err ){
+    return cb( err );
+  });
+  db.save( "attachments", message.id, s, {
+     contentType: "application/octet-stream"
+  }, cb );
 }
 
 function bindJob(){
