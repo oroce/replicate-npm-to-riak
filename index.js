@@ -1,5 +1,5 @@
 var host = process.env.RIAK_HOST||"192.168.1.254"
-var db = require( "riak-js" ).getClient({host: host });
+var db = require( "riak-js" ).getClient({host: host, api: process.env.RIAK_API });
 var sync = require( "couchdb-sync" );
 var async = require( "async" );
 var targetURL = process.env.TARGET_URL||"http://registry.oroszi.net:8008";
