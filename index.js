@@ -102,4 +102,4 @@ connection.once( "ready", function(){
     q.bind( "#" );
     start();
   });
-});
+}).on( "error", console.error.bind( console, "amqp error") );
