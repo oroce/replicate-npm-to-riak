@@ -94,4 +94,12 @@ var start = function(){
       .on( "error", onError( "syncer", syncer ) );
   });
 };
-connection.once( "ready", start );
+connection.once( "ready", function(){
+  connection.queue( "npm-download", {
+    autoDelete: false,
+    durable: true,
+  }, function( q ){
+    q.bind( "#" );
+    start();
+  });
+});
