@@ -3,9 +3,10 @@ var db = require( "riak-js" ).getClient({host: host });
 var sync = require( "couchdb-sync" );
 var async = require( "async" );
 var targetURL = process.env.TARGET_URL||"http://registry.oroszi.net:8008";
-var request = require( "request" );
 var registryUrl = process.env.REGISTRY_URL||"https://fullfatdb.npmjs.com/registry";
 var maxQueueLen = 1000;
+var amqp = require( "amqp" );
+var connection = amqp.createConnection({url: process.env.AMQP_URL});
 require( "http" ).globalAgent.maxSockets = Infinity;
 
 var onError = function( prefix ){
@@ -17,81 +18,80 @@ var onError = function( prefix ){
   };
 };
 
-
-db.getBucket( "docs", function( err, bucket ){
-  if( err ){
-    throw err;
-  }
-  var seq = process.env.SEQ || bucket.seq || 0;
-  var queue = async.queue(function( doc, done ){
-
-    if( !doc.versions ){
-      console.warn( "wtf it has no versinos: ", doc );
+var start = function(){
+  console.log( "starting replication" );
+  db.getBucket( "docs", function( err, bucket ){
+    if( err ){
+      throw err;
     }
-    var files = Object.keys( doc.versions||{} ).map(function( version ){
-      var obj = doc.versions[ version ];
-      var currentTarball = obj.dist.tarball;
-      var fullName = obj.name + "-" + obj.version + ".tgz"
-      doc.versions[ version ].dist.tarball = targetURL + "/riak/attachments/" + fullName;
-      return {
-        name: fullName,
-        url: currentTarball
-      };
-    });
 
+    var seq = process.env.SEQ || bucket.seq || 0;
+    var queue = async.queue(function( doc, done ){
 
-    async.each( files, function( obj, cb ){
-      request({
-        url: obj.url,
-        encoding: null
-      }, function( err, _, body ){
-        if( err ){
-          return cb( err );
-        }
-        db.save( "attachments", obj.name, body, {
-          contentType: "application/octet-stream"
-        }, cb );
-      });
-    }, function( err ){
-      if( err ){
-        return done( err );
+      if( !doc.versions ){
+        console.warn( "wtf it has no versinos: ", doc );
+        return done();
       }
+      Object.keys( doc.versions||{} ).map(function( version ){
+        var obj = doc.versions[ version ];
+        var currentTarball = obj.dist.tarball;
+        var fullName = obj.name + "-" + obj.version + ".tgz"
+        doc.versions[ version ].dist.tarball = targetURL + "/riak/attachments/" + fullName;
+        connection.publish( "npm-download", {
+          id: fullName,
+          url: currentTarball
+        }, {
+          contentType: "application/json"
+        }, console.log.bind(console, 'its published'));
+      });
+
       db.save( "docs", doc._id, doc, {}, done );
-    });
-  }, 10);
 
-  queue.drain = function(){
-    console.log( "resuming syncer" );
-    syncer.feed.resume();
-  }
+    }, 10);
 
-  console.log( "start running on %s with seq: %s", registryUrl, seq );
-  var syncer = sync( registryUrl, seq );
-  var i = 0;
+    queue.drain = function(){
+      console.log( "resuming syncer" );
+      syncer.feed.resume();
+    }
 
-  syncer
-    .on( "progress", function( val ){
-      console.log( "progress: %s%, queue length: %s, docs: %s", (val * 100 ).toFixed(2), queue.length(), ++i );
-    })
-    .on( "data", function( data ){
-      if( data.doc._deleted === true ){
-        // we don't sync deleted packages
-        return;
-      }
-      if( !data.doc.versions ){
-        // wtf is this? in npm's couchdb there are some weird shit
-        return;
-      }
-      queue.push( data.doc, onError( "message handler", data ) )
-      if( queue.length() > maxQueueLen ){
-        console.log( "queue length is more than %d, pausing", maxQueueLen );
-        syncer.feed.pause();
-      }
-    })
-    .on( "max", function( newSeq ){
-      db.saveBucket( "docs", {
-        seq: newSeq
-      });
-    })
-    .on( "error", onError( "syncer", syncer ) );
-});
+    console.log( "start running on %s with seq: %s", registryUrl, seq );
+    var syncer = sync( registryUrl, seq );
+    var i = 0;
+
+    syncer
+      .on( "progress", function( val ){
+        console.log( "progress: %s%, queue length: %s, docs: %s", (val * 100 ).toFixed(2), queue.length(), ++i );
+      })
+      .on( "data", function( data ){
+        if( data.doc._deleted === true ){
+          // we don't sync deleted packages
+          return;
+        }
+        if( !data.doc.versions ){
+          // wtf is this? in npm's couchdb there are some weird shit
+          return;
+        }
+        var push = function(){
+          queue.push( data.doc, function( err ){
+            console.log( "queue length is: ", queue.length() );
+            if( err ){
+              process.nextTick( push );
+              return onError( "message handler", data )( err );
+            }
+          });
+        }
+        push();
+        if( queue.length() > maxQueueLen ){
+          console.log( "queue length is more than %d, pausing", maxQueueLen );
+          syncer.feed.pause();
+        }
+      })
+      .on( "max", function( newSeq ){
+        db.saveBucket( "docs", {
+          seq: newSeq
+        });
+      })
+      .on( "error", onError( "syncer", syncer ) );
+  });
+};
+connection.once( "ready", start );
