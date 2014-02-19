@@ -1,12 +1,35 @@
+/* sample job
+{
+  "id": "debug-0.0.1.tar.gz",
+  "url": "http://registry.npmjs.org/debug/-/debug-0.0.1.tgz"
+}
+Big file:
+{
+  "id": "tilemill-0.8.0.tar.gz"
+  "url":"http://registry.npmjs.org/tilemill/-/tilemill-0.8.0.tgz"
+}
+*/
 var amqp = require( "amqp" );
 var connection = amqp.createConnection({ url: process.env.AMQP_URL });
 var workerNums = process.env.FORKS||require("os").cpus().length;
 var cluster = require( "cluster" );
 var host = process.env.RIAK_HOST||"192.168.1.254"
-var db = require( "riak-js" ).getClient({host: host });
+var knox = require( "knox" );
+var http = require( "http" );
+var db = require( "riak-js" ).getClient({host: host});
+var client = knox.createClient({
+  key: process.env.KEY,
+  secret: process.env.SECRET,
+  bucket: "attachments",
+  endpoint: process.env.ENDPOINT||"127.0.0.1",
+  secure: false,
+  port: 8084,
+  style: "path"
+});
 var request = require( "request" );
 function onMessage( message, headers, deliveryInfo, job ){
-  console.log( "job arrived", message.id, message.url );
+  
+  //console.log( "job arrived", message.id, message.url );
   var cb = function( err ){
     if( err ){
       console.error( "JOB ERROR", message, err );
@@ -17,7 +40,7 @@ function onMessage( message, headers, deliveryInfo, job ){
     job.acknowledge();
   }
 
-  var s = request({
+  /*var s = request({
     url: message.url,
     encoding: null
   });
@@ -25,8 +48,20 @@ function onMessage( message, headers, deliveryInfo, job ){
     return cb( err );
   });
   db.save( "attachments", message.id, s, {
-     contentType: "application/octet-stream"
-  }, cb );
+    contentType: "application/octet-stream"
+  },function(){
+    console.log.apply( console, arguments );
+  })*/
+  http.get( message.url, function( res ){
+    res.on( "error", cb );
+    //console.log( res.headers );
+    var k = client.putStream( res, message.id, {
+       "Content-Type": res.headers[ "content-type" ],
+       "Content-Length": res.headers[ "content-length" ],
+       "x-amz-acl": "public-read"
+    }, cb );
+  });
+
 }
 
 function bindJob(){
@@ -45,6 +80,9 @@ function bindJob(){
 function start(){
   if( cluster.isMaster ){
     console.log( "starting master" );
+    client.list({}, function( err, d ){
+      console.log( require( "util" ).inspect( d, { depth: 5 } ) );
+    })
     for( var i = 0; i < workerNums; i++ ){
       cluster.fork();
     }
@@ -61,6 +99,6 @@ function start(){
 
 connection.once( "ready", function(){
   start();
-});
+}).on( "error", console.error.bind( console) );
 
 
