@@ -16,7 +16,7 @@ var cluster = require( "cluster" );
 var host = process.env.RIAK_HOST||"192.168.1.254"
 var knox = require( "knox" );
 var http = require( "http" );
-var https = require( "http" );
+var https = require( "https" );
 var db = require( "riak-js" ).getClient({host: host});
 var client = knox.createClient({
   key: process.env.KEY,
@@ -53,7 +53,8 @@ function onMessage( message, headers, deliveryInfo, job ){
   },function(){
     console.log.apply( console, arguments );
   })*/
-  (/^https:/.test( message.url ) ? https : http ).get( message.url, function( res ){
+  var m = (/^https/).test( message.url ) ? https : http;
+  m.get( message.url, function( res ){
     res.on( "error", cb );
     //console.log( res.headers );
     var k = client.putStream( res, message.id, {
