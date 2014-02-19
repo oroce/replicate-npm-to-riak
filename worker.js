@@ -16,6 +16,7 @@ var cluster = require( "cluster" );
 var host = process.env.RIAK_HOST||"192.168.1.254"
 var knox = require( "knox" );
 var http = require( "http" );
+var https = require( "http" );
 var db = require( "riak-js" ).getClient({host: host});
 var client = knox.createClient({
   key: process.env.KEY,
@@ -52,7 +53,7 @@ function onMessage( message, headers, deliveryInfo, job ){
   },function(){
     console.log.apply( console, arguments );
   })*/
-  request.get( message.url, function( res ){
+  (/^https:/.test( message.url ) ? https : http ).get( message.url, function( res ){
     res.on( "error", cb );
     //console.log( res.headers );
     var k = client.putStream( res, message.id, {
@@ -80,9 +81,7 @@ function bindJob(){
 function start(){
   if( cluster.isMaster ){
     console.log( "starting master" );
-    client.list({}, function( err, d ){
-      console.log( require( "util" ).inspect( d, { depth: 5 } ) );
-    })
+    
     for( var i = 0; i < workerNums; i++ ){
       cluster.fork();
     }
