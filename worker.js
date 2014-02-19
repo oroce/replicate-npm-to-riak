@@ -52,7 +52,7 @@ function onMessage( message, headers, deliveryInfo, job ){
   },function(){
     console.log.apply( console, arguments );
   })*/
-  http.get( message.url, function( res ){
+  request.get( message.url, function( res ){
     res.on( "error", cb );
     //console.log( res.headers );
     var k = client.putStream( res, message.id, {
