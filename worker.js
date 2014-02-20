@@ -55,7 +55,12 @@ function onMessage( message, headers, deliveryInfo, job ){
   })*/
   var m = (/^https/).test( message.url ) ? https : http;
   m.get( message.url, function( res ){
-    res.on( "error", cb );
+    res.on( "error", function( err ){
+      if( err ){
+        console.log( "response error:", message );
+      }
+      cb( err );
+    });
     //console.log( res.headers );
     var k = client.putStream( res, message.id, {
        "Content-Type": res.headers[ "content-type" ],
@@ -99,6 +104,6 @@ function start(){
 
 connection.once( "ready", function(){
   start();
-}).on( "error", console.error.bind( console) );
+}).on( "error", console.error.bind( console, "amqp-error") );
 
 
