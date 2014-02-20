@@ -29,6 +29,7 @@ var client = knox.createClient({
 });
 var url = require("url");
 var request = require( "request" );
+var util = require( "util" );
 function onMessage( message, headers, deliveryInfo, job ){
   
   //console.log( "job arrived", message.id, message.url );
@@ -54,11 +55,12 @@ function onMessage( message, headers, deliveryInfo, job ){
   },function(){
     console.log.apply( console, arguments );
   })*/
-  var parts = url.parse( message.url ).pathname.split("/"); 
+  /*var parts = url.parse( message.url ).pathname.split("/"); 
   var cdnUrl = ["http://registry.npmjs.org", parts[2], "-", parts[3] ].join( "/" );
   var m = (/^https/).test( cdnUrl ) ? https : http;
-  console.log( "%s transformed to %s", message.url, cdnUrl );
-  m.get( cdnUrl, function( res ){
+  console.log( "%s transformed to %s", message.url, cdnUrl );*/
+  var newUrl = url.format( util._extend( url.parse( message.url ), {port:80} ) );
+  m.get( newUrl, function( res ){
     res.on( "error", function( err ){
       if( err ){
         console.log( "response error:", message );
