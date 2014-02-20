@@ -57,8 +57,9 @@ function onMessage( message, headers, deliveryInfo, job ){
   })*/
   /*var parts = url.parse( message.url ).pathname.split("/"); 
   var cdnUrl = ["http://registry.npmjs.org", parts[2], "-", parts[3] ].join( "/" );
-  var m = (/^https/).test( cdnUrl ) ? https : http;
+  
   console.log( "%s transformed to %s", message.url, cdnUrl );*/
+  var m = (/^https/).test( cdnUrl ) ? https : http;
   var newUrl = url.format( util._extend( url.parse( message.url ), {port:80} ) );
   m.get( newUrl, function( res ){
     res.on( "error", function( err ){
