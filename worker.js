@@ -60,9 +60,9 @@ function onMessage( message, headers, deliveryInfo, job ){
   
   console.log( "%s transformed to %s", message.url, cdnUrl );*/
 
-  var newUrl = url.format( util._extend( url.parse( message.url ), {port:80} ) );
-  var m = (/^https/).test( newUrl ) ? https : http;
-  m.get( newUrl, function( res ){
+  message.newUrl = url.format( util._extend( url.parse( message.url ), {port:80} ) );
+  var m = (/^https/).test( message.newUrl ) ? https : http;
+  m.get( message.newUrl, function( res ){
     res.on( "error", function( err ){
       if( err ){
         console.log( "response error:", message );
