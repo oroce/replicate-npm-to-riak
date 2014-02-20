@@ -67,6 +67,9 @@ function onMessage( message, headers, deliveryInfo, job ){
        "Content-Length": res.headers[ "content-length" ],
        "x-amz-acl": "public-read"
     }, cb );
+  }).on( "error", function( err ){
+    console.log( "http.get error", err );
+    cb( err );
   });
 
 }
