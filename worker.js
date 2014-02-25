@@ -24,7 +24,7 @@ var client = knox.createClient({
   bucket: "attachments",
   endpoint: process.env.ENDPOINT||"127.0.0.1",
   secure: false,
-  port: 8084,
+  port: process.env.S3_PORT||8084,
   style: "path"
 });
 var url = require("url");
