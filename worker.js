@@ -66,7 +66,7 @@ function onMessage( message, headers, deliveryInfo, job ){
   delete uri.href;
   uri.port = port;
   message.newUrl = url.format( uri );
-  m.get( message.newUrl, function( res ){
+  var req = m.get(message.newUrl, function( res ){
     res.on( "error", function( err ){
       if( err ){
         console.log( "response error:", message );
@@ -83,7 +83,12 @@ function onMessage( message, headers, deliveryInfo, job ){
     console.log( "http.get error", err );
     cb( err );
   });
-
+  req.setTimeout(60*1000, function(){
+    var err = new Error("ETIMEDOUT")
+    err.code = "ETIMEDOUT"
+    req.abort();
+    cb( err );
+  });.
 }
 
 function bindJob(){
