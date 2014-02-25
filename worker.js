@@ -88,7 +88,7 @@ function onMessage( message, headers, deliveryInfo, job ){
     err.code = "ETIMEDOUT"
     req.abort();
     cb( err );
-  });.
+  });
 }
 
 function bindJob(){
