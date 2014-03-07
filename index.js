@@ -59,6 +59,7 @@ var start = function(){
       });
       var saveVersions = function(err){
         if( err ){
+          console.error( "save versions wont run" );
           return done(err);
         }
         async.each( versions, function( message, cb ){
