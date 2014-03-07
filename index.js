@@ -37,7 +37,7 @@ var start = function(){
       throw err;
     }
 
-    var seq = process.env.SEQ;// || bucket.seq || 0;
+    var seq = process.env.SEQ || bucket.seq || 0;
     var queue = async.queue(function( doc, done ){
 
       if( !doc.versions ){
