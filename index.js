@@ -71,6 +71,7 @@ var start = function(){
             delete uri.href;
             uri.port = port;
             message.newUrl = url.format( uri );
+            console.error( "getting " + message.newUrl );
             var req = m.get(message.newUrl, function( res ){
               res.on( "error", function( err ){
                 if( err ){
