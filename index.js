@@ -18,6 +18,7 @@ var client = knox.createClient({
   port: process.env.S3_PORT||8084,
   style: "path"
 });
+var url = require( "url" );
 var createBar = require( "another-progress-bar" )
 var bar = createBar( "syncing from " + registryUrl );
 var onError = function( prefix ){
