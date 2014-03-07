@@ -16,6 +16,7 @@
     "async": "~0.2.10",
     "couchdb-sync": "~0.1.0",
     "amqp": "~0.1.8",
-    "knox": "~0.8.9"
+    "knox": "~0.8.9",
+    "another-progress-bar": "~0.1.2"
   }
 }
